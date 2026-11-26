@@ -1,31 +1,41 @@
 package com.moviles.catalogo.controllers;
 
 import java.util.Optional;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
+import com.moviles.catalogo.dtos.LoginResponseDTO;
 import com.moviles.catalogo.dtos.NegocioLoginDTO;
 import com.moviles.catalogo.dtos.NegocioRequestDTO;
 import com.moviles.catalogo.dtos.NegocioResponseDTO;
 import com.moviles.catalogo.dtos.NegocioUpdateDTO;
 import com.moviles.catalogo.entities.Negocio;
 import com.moviles.catalogo.services.NegocioService;
+import com.moviles.catalogo.security.JwtService;
+import com.moviles.catalogo.security.NegocioPrincipal;
+import com.moviles.catalogo.exceptions.ForbiddenException;
+import com.moviles.catalogo.exceptions.BusinessException;
 
 @RestController
 @RequestMapping("/api/negocios")
 public class NegocioController {
 
     private final NegocioService negocioService;
+    private final JwtService jwtService;
 
-    public NegocioController(NegocioService negocioService){
+    public NegocioController(NegocioService negocioService, JwtService jwtService){
         this.negocioService = negocioService;
+        this.jwtService = jwtService;
     }
 
     // -------------------------------
     // 1️⃣ Crear un negocio (POST)
     // -------------------------------
     @PostMapping("/guardar")
-    public ResponseEntity<NegocioResponseDTO> crearNegocio(@RequestBody NegocioRequestDTO negocio) {
+    public ResponseEntity<NegocioResponseDTO> crearNegocio(@Valid @RequestBody NegocioRequestDTO negocio) {
         Negocio nuevo = negocioService.guardarNegocio(negocio);
         return ResponseEntity.ok(aNegocioResponse(nuevo));
     }
@@ -44,20 +54,25 @@ public class NegocioController {
     // 3️⃣ Actualizar un negocio (PUT)
     // -------------------------------
     @PutMapping("/{id}")
-    public ResponseEntity<NegocioResponseDTO> actualizarNegocio(@PathVariable Long id, @RequestBody NegocioUpdateDTO negocio) {
-        try {
-            Negocio actualizado = negocioService.actualizarNegocio(id, negocio);
-            return ResponseEntity.ok(aNegocioResponse(actualizado));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<NegocioResponseDTO> actualizarNegocio(
+        @PathVariable Long id,
+        @Valid @RequestBody NegocioUpdateDTO negocio,
+        Authentication authentication
+    ) {
+        verificarPropietario(id, authentication);
+        Negocio actualizado = negocioService.actualizarNegocio(id, negocio);
+        return ResponseEntity.ok(aNegocioResponse(actualizado));
     }
 
     // -------------------------------
     // 4️⃣ Eliminar un negocio (DELETE)
     // -------------------------------
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarNegocio(@PathVariable Long id) {
+    public ResponseEntity<Void> eliminarNegocio(
+        @PathVariable Long id,
+        Authentication authentication
+    ) {
+        verificarPropietario(id, authentication);
         negocioService.eliminarNegocio(id);
         return ResponseEntity.noContent().build();
     }
@@ -66,16 +81,27 @@ public class NegocioController {
     // Verificar el login
     // -------------------------------
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody NegocioLoginDTO loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody NegocioLoginDTO loginRequest) {
         Optional<Negocio> negocio = negocioService.login(
             loginRequest.nombreNegocio(),
             loginRequest.passwordNegocio()
         );
 
         if (negocio.isPresent()) {
-            return ResponseEntity.ok(aNegocioResponse(negocio.get()));
+            Negocio encontrado = negocio.get();
+            String token = jwtService.generateToken(
+                encontrado.getIdNegocio(),
+                encontrado.getNombreNegocio()
+            );
+            LoginResponseDTO response = new LoginResponseDTO(
+                token,
+                "Bearer",
+                jwtService.getExpirationSeconds(),
+                aNegocioResponse(encontrado)
+            );
+            return ResponseEntity.ok(response);
         } else {
-            return ResponseEntity.status(401).body("Credenciales incorrectas");
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Credenciales incorrectas");
         }
     }
 
@@ -87,5 +113,12 @@ public class NegocioController {
             negocio.getTelefonoNegocio(),
             negocio.getFotoNegocio()
         );
+    }
+
+    private void verificarPropietario(Long id, Authentication authentication) {
+        NegocioPrincipal principal = (NegocioPrincipal) authentication.getPrincipal();
+        if (principal.idNegocio() != id) {
+            throw new ForbiddenException("Solo puedes administrar tu propio negocio");
+        }
     }
 }

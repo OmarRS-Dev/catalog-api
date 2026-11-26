@@ -1,9 +1,11 @@
 package com.moviles.catalogo.dtos;
 
+import jakarta.validation.constraints.Size;
+
 public record NegocioUpdateDTO(
-    String nombreNegocio,
+    @Size(max = 100) String nombreNegocio,
     String direccionNegocio,
     String telefonoNegocio,
     String fotoNegocio,
-    String passwordNegocio
+    @Size(min = 8, max = 72) String passwordNegocio
 ) {}

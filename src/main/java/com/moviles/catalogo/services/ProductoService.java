@@ -10,11 +10,11 @@ import com.moviles.catalogo.dtos.ProductoUpdateDTO;
 import com.moviles.catalogo.entities.Producto;
 
 public interface ProductoService {
-    Producto guardarProducto(@NonNull ProductoRequestDTO producto);
+    Producto guardarProducto(@NonNull ProductoRequestDTO producto, @NonNull Long idNegocio);
     Optional<Producto> obtenerPorId(@NonNull Long id);
     List<Producto> listarTodos();
-    Producto actualizarProducto(@NonNull Long id, ProductoUpdateDTO producto);
-    void eliminarProducto(@NonNull Long id);
+    Producto actualizarProducto(@NonNull Long id, ProductoUpdateDTO producto, @NonNull Long idNegocio);
+    void eliminarProducto(@NonNull Long id, @NonNull Long idNegocio);
     public List<Producto> obtenerProductosPorNegocio(@NonNull Long idNegocio);
     public List<Producto> buscarProductos(String query);
 }

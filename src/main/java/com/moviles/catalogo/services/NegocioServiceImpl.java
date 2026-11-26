@@ -5,10 +5,13 @@ import java.util.Optional;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
 
 import com.moviles.catalogo.dtos.NegocioRequestDTO;
 import com.moviles.catalogo.dtos.NegocioUpdateDTO;
 import com.moviles.catalogo.entities.Negocio;
+import com.moviles.catalogo.exceptions.BusinessException;
+import com.moviles.catalogo.exceptions.ResourceNotFoundException;
 import com.moviles.catalogo.repositories.NegocioRepository;
 
 @Service
@@ -27,6 +30,9 @@ public class NegocioServiceImpl implements NegocioService{
 
     @Override
     public Negocio guardarNegocio(@NonNull NegocioRequestDTO dto) {
+        if (negocioRepository.findByNombreNegocio(dto.nombreNegocio()).isPresent()) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un negocio con ese nombre");
+        }
         Negocio negocio = new Negocio();
         negocio.setNombreNegocio(dto.nombreNegocio());
         negocio.setDireccionNegocio(dto.direccionNegocio());
@@ -45,16 +51,28 @@ public class NegocioServiceImpl implements NegocioService{
     public Negocio actualizarNegocio(@NonNull Long id, NegocioUpdateDTO dto) {
         return negocioRepository.findById(id)
             .map(existing -> {
-                existing.setNombreNegocio(dto.nombreNegocio());
-                existing.setDireccionNegocio(dto.direccionNegocio());
-                existing.setFotoNegocio(dto.fotoNegocio());
-                existing.setTelefonoNegocio(dto.telefonoNegocio());
+                if (dto.nombreNegocio() != null && !dto.nombreNegocio().isBlank()) {
+                    if (!existing.getNombreNegocio().equals(dto.nombreNegocio())
+                        && negocioRepository.findByNombreNegocio(dto.nombreNegocio()).isPresent()) {
+                        throw new BusinessException(HttpStatus.CONFLICT, "Ya existe un negocio con ese nombre");
+                    }
+                    existing.setNombreNegocio(dto.nombreNegocio());
+                }
+                if (dto.direccionNegocio() != null) {
+                    existing.setDireccionNegocio(dto.direccionNegocio());
+                }
+                if (dto.fotoNegocio() != null) {
+                    existing.setFotoNegocio(dto.fotoNegocio());
+                }
+                if (dto.telefonoNegocio() != null) {
+                    existing.setTelefonoNegocio(dto.telefonoNegocio());
+                }
                 if (dto.passwordNegocio() != null && !dto.passwordNegocio().isBlank()) {
                     existing.setPasswordNegocio(passwordEncoder.encode(dto.passwordNegocio()));
                 }
                 return negocioRepository.save(existing);
             })
-            .orElseThrow(() -> new RuntimeException("Negocio no encontrado"));
+            .orElseThrow(() -> new ResourceNotFoundException("Negocio no encontrado"));
     }
 
     @Override

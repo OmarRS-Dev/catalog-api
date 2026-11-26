@@ -5,7 +5,9 @@ import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import com.moviles.catalogo.dtos.CategoriaResponseDTO;
 import com.moviles.catalogo.dtos.NegocioResponseDTO;
@@ -16,6 +18,7 @@ import com.moviles.catalogo.entities.Categoria;
 import com.moviles.catalogo.entities.Negocio;
 import com.moviles.catalogo.entities.Producto;
 import com.moviles.catalogo.services.ProductoService;
+import com.moviles.catalogo.security.NegocioPrincipal;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -29,8 +32,12 @@ public class ProductoController {
 
     // Crear producto
     @PostMapping("/guardar")
-    public ResponseEntity<ProductoResponseDTO> crearProducto(@RequestBody ProductoRequestDTO producto) {
-        Producto nuevo = productoService.guardarProducto(producto);
+    public ResponseEntity<ProductoResponseDTO> crearProducto(
+        @Valid @RequestBody ProductoRequestDTO producto,
+        Authentication authentication
+    ) {
+        NegocioPrincipal principal = (NegocioPrincipal) authentication.getPrincipal();
+        Producto nuevo = productoService.guardarProducto(producto, principal.idNegocio());
         return ResponseEntity.ok(aProductoResponse(nuevo));
     }
 
@@ -52,19 +59,28 @@ public class ProductoController {
 
     // Actualizar
     @PutMapping("/{id}")
-    public ResponseEntity<ProductoResponseDTO> actualizarProducto(@PathVariable Long id, @RequestBody ProductoUpdateDTO producto) {
-        try {
-            Producto actualizado = productoService.actualizarProducto(id, producto);
-            return ResponseEntity.ok(aProductoResponse(actualizado));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<ProductoResponseDTO> actualizarProducto(
+        @PathVariable Long id,
+        @Valid @RequestBody ProductoUpdateDTO producto,
+        Authentication authentication
+    ) {
+        NegocioPrincipal principal = (NegocioPrincipal) authentication.getPrincipal();
+        Producto actualizado = productoService.actualizarProducto(
+            id,
+            producto,
+            principal.idNegocio()
+        );
+        return ResponseEntity.ok(aProductoResponse(actualizado));
     }
 
     // Eliminar
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {
-        productoService.eliminarProducto(id);
+    public ResponseEntity<Void> eliminarProducto(
+        @PathVariable Long id,
+        Authentication authentication
+    ) {
+        NegocioPrincipal principal = (NegocioPrincipal) authentication.getPrincipal();
+        productoService.eliminarProducto(id, principal.idNegocio());
         return ResponseEntity.noContent().build();
     }
 

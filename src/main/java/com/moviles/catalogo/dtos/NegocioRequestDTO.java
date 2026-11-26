@@ -1,9 +1,12 @@
 package com.moviles.catalogo.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public record NegocioRequestDTO(
-    String nombreNegocio,
+    @NotBlank @Size(max = 100) String nombreNegocio,
     String direccionNegocio,
     String telefonoNegocio,
     String fotoNegocio,
-    String passwordNegocio
+    @NotBlank @Size(min = 8, max = 72) String passwordNegocio
 ) {}

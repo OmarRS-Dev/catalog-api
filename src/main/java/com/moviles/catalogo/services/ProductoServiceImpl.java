@@ -11,6 +11,8 @@ import com.moviles.catalogo.dtos.ProductoUpdateDTO;
 import com.moviles.catalogo.entities.Categoria;
 import com.moviles.catalogo.entities.Negocio;
 import com.moviles.catalogo.entities.Producto;
+import com.moviles.catalogo.exceptions.ForbiddenException;
+import com.moviles.catalogo.exceptions.ResourceNotFoundException;
 import com.moviles.catalogo.repositories.CategoriaRepository;
 import com.moviles.catalogo.repositories.NegocioRepository;
 import com.moviles.catalogo.repositories.ProductoRepository;
@@ -33,14 +35,14 @@ public class ProductoServiceImpl implements ProductoService {
     }
 
     @Override
-    public Producto guardarProducto(@NonNull ProductoRequestDTO dto) {
+    public Producto guardarProducto(@NonNull ProductoRequestDTO dto, @NonNull Long idNegocio) {
         Producto producto = new Producto();
         producto.setNombreProducto(dto.nombreProducto());
         producto.setDescripcionProducto(dto.descripcionProducto());
         producto.setPortadaProducto(dto.portadaProducto());
         producto.setPrecioProducto(dto.precioProducto());
         producto.setCategoria(obtenerCategoria(dto.idCategoria()));
-        producto.setNegocio(obtenerNegocio(dto.idNegocio()));
+        producto.setNegocio(obtenerNegocio(idNegocio));
         return productoRepository.save(producto);
     }
 
@@ -55,23 +57,35 @@ public class ProductoServiceImpl implements ProductoService {
     }
 
     @Override
-    public Producto actualizarProducto(@NonNull Long id, ProductoUpdateDTO dto) {
+    public Producto actualizarProducto(
+        @NonNull Long id,
+        ProductoUpdateDTO dto,
+        @NonNull Long idNegocio
+    ) {
         return productoRepository.findById(id)
                 .map(p -> {
+                    if (p.getNegocio() == null || p.getNegocio().getIdNegocio() != idNegocio) {
+                        throw new ForbiddenException("Solo puedes editar los productos de tu negocio");
+                    }
                     p.setNombreProducto(dto.nombreProducto());
                     p.setDescripcionProducto(dto.descripcionProducto());
                     p.setCategoria(obtenerCategoria(dto.idCategoria()));
-                    p.setNegocio(obtenerNegocio(dto.idNegocio()));
                     p.setPortadaProducto(dto.portadaProducto());
                     p.setPrecioProducto(dto.precioProducto());
                     return productoRepository.save(p);
                 })
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado"));
     }
 
     @Override
-    public void eliminarProducto(@NonNull Long id) {
-        productoRepository.deleteById(id);
+    public void eliminarProducto(@NonNull Long id, @NonNull Long idNegocio) {
+        Producto producto = productoRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Producto no encontrado"));
+        if (producto.getNegocio() == null
+            || producto.getNegocio().getIdNegocio() != idNegocio) {
+            throw new ForbiddenException("Solo puedes eliminar los productos de tu negocio");
+        }
+        productoRepository.delete(producto);
     }
 
     @Override
@@ -86,11 +100,11 @@ public class ProductoServiceImpl implements ProductoService {
 
     private Categoria obtenerCategoria(Long idCategoria) {
         return categoriaRepository.findById(idCategoria)
-            .orElseThrow(() -> new RuntimeException("Categoria no encontrada"));
+            .orElseThrow(() -> new ResourceNotFoundException("Categoria no encontrada"));
     }
 
     private Negocio obtenerNegocio(Long idNegocio) {
         return negocioRepository.findById(idNegocio)
-            .orElseThrow(() -> new RuntimeException("Negocio no encontrado"));
+            .orElseThrow(() -> new ResourceNotFoundException("Negocio no encontrado"));
     }
 }
