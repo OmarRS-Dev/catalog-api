@@ -2,14 +2,15 @@ package com.moviles.catalogo.services;
 
 import java.util.Optional;
 
-
+import com.moviles.catalogo.dtos.NegocioRequestDTO;
+import com.moviles.catalogo.dtos.NegocioUpdateDTO;
 import com.moviles.catalogo.entities.Negocio;
 
 public interface NegocioService {
 
-    Negocio guardarNegocio(Negocio negocio);
+    Negocio guardarNegocio(NegocioRequestDTO negocio);
     Optional<Negocio> obtenerPorId( Long id);
-    Negocio actualizarNegocio( Long id, Negocio negocio);
+    Negocio actualizarNegocio(Long id, NegocioUpdateDTO negocio);
     void eliminarNegocio( Long id);
     Optional<Negocio> login(String nombreNegocio, String password);
 }
