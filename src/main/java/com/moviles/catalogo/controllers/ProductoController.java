@@ -7,9 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 
 import com.moviles.catalogo.dtos.CategoriaResponseDTO;
+import com.moviles.catalogo.dtos.ImageUploadResponseDTO;
 import com.moviles.catalogo.dtos.NegocioResponseDTO;
 import com.moviles.catalogo.dtos.ProductoRequestDTO;
 import com.moviles.catalogo.dtos.ProductoResponseDTO;
@@ -18,6 +20,7 @@ import com.moviles.catalogo.entities.Categoria;
 import com.moviles.catalogo.entities.Negocio;
 import com.moviles.catalogo.entities.Producto;
 import com.moviles.catalogo.services.ProductoService;
+import com.moviles.catalogo.services.CloudinaryImageService;
 import com.moviles.catalogo.security.NegocioPrincipal;
 
 @RestController
@@ -25,9 +28,23 @@ import com.moviles.catalogo.security.NegocioPrincipal;
 public class ProductoController {
 
     private final ProductoService productoService;
+    private final CloudinaryImageService cloudinaryImageService;
 
-    public ProductoController(ProductoService productoService) {
+    public ProductoController(
+        ProductoService productoService,
+        CloudinaryImageService cloudinaryImageService
+    ) {
         this.productoService = productoService;
+        this.cloudinaryImageService = cloudinaryImageService;
+    }
+
+    @PostMapping("/imagenes")
+    public ResponseEntity<ImageUploadResponseDTO> subirImagen(
+        @RequestParam("image") MultipartFile image,
+        Authentication authentication
+    ) {
+        String secureUrl = cloudinaryImageService.upload(image);
+        return ResponseEntity.ok(new ImageUploadResponseDTO(secureUrl));
     }
 
     // Crear producto

@@ -25,6 +25,10 @@ const elements = {
   authSwitchPrompt: document.querySelector("#auth-switch-prompt"),
   productForm: document.querySelector("#product-form"),
   productFormMessage: document.querySelector("#product-form-message"),
+  productImageFile: document.querySelector("#product-image-file"),
+  productImagePreviewWrap: document.querySelector("#product-image-preview-wrap"),
+  productImagePreview: document.querySelector("#product-image-preview"),
+  productImageCurrentLabel: document.querySelector("#product-image-current-label"),
   productCategory: document.querySelector("#product-category"),
   categoryProductHelp: document.querySelector("#no-categories-help")
 };
@@ -41,7 +45,9 @@ function hideMessage(element) {
 
 async function api(url, options = {}) {
   const headers = new Headers(options.headers || {});
-  if (options.body) headers.set("Content-Type", "application/json");
+  if (options.body && !(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
   if (state.token) headers.set("Authorization", `Bearer ${state.token}`);
 
   const response = await fetch(url, { ...options, headers });
@@ -301,7 +307,12 @@ function openProductForm(product = null) {
   document.querySelector("#product-description").value = product?.descripcionProducto || "";
   document.querySelector("#product-category").value = product?.categoria?.idCategoria || "";
   document.querySelector("#product-price").value = product?.precioProducto ?? "";
-  document.querySelector("#product-image").value = product?.portadaProducto || "";
+  elements.productImageFile.value = "";
+  elements.productImagePreview.src = safeImageUrl(product?.portadaProducto) || "";
+  elements.productImageCurrentLabel.textContent = product?.portadaProducto
+    ? "Foto actual. Elige otra para reemplazarla."
+    : "";
+  elements.productImagePreviewWrap.classList.toggle("d-none", !product?.portadaProducto);
   document.querySelector("#product-modal-title").textContent = product ? "Editar producto" : "Agregar producto";
   document.querySelector("#save-product").textContent = product ? "Guardar cambios" : "Guardar producto";
   bootstrap.Modal.getOrCreateInstance(document.querySelector("#product-modal")).show();
@@ -315,11 +326,25 @@ async function saveProduct(event) {
     nombreProducto: document.querySelector("#product-name").value.trim(),
     descripcionProducto: document.querySelector("#product-description").value.trim(),
     idCategoria: Number(document.querySelector("#product-category").value),
-    portadaProducto: document.querySelector("#product-image").value.trim() || null,
+    portadaProducto: null,
     precioProducto: Number(document.querySelector("#product-price").value)
   };
 
   try {
+    const selectedImage = elements.productImageFile.files[0];
+    if (selectedImage) {
+      const formData = new FormData();
+      formData.append("image", selectedImage);
+      const uploadedImage = await api("/api/productos/imagenes", {
+        method: "POST",
+        body: formData
+      });
+      payload.portadaProducto = uploadedImage.secureUrl;
+    } else if (id) {
+      const currentProduct = state.products.find((product) => String(product.idProducto) === id);
+      payload.portadaProducto = currentProduct?.portadaProducto || null;
+    }
+
     await api(id ? `/api/productos/${encodeURIComponent(id)}` : "/api/productos/guardar", {
       method: id ? "PUT" : "POST",
       body: JSON.stringify(payload)
@@ -331,6 +356,27 @@ async function saveProduct(event) {
     showMessage(elements.productFormMessage, error.message, "danger");
   }
 }
+
+elements.productImageFile.addEventListener("change", () => {
+  const [file] = elements.productImageFile.files;
+  if (!file) return;
+
+  if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+    elements.productImageFile.value = "";
+    showMessage(elements.productFormMessage, "Formato no admitido. Usa JPG, PNG, WEBP o GIF.", "danger");
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    elements.productImageFile.value = "";
+    showMessage(elements.productFormMessage, "La imagen debe pesar 5 MB o menos.", "danger");
+    return;
+  }
+
+  hideMessage(elements.productFormMessage);
+  elements.productImagePreview.src = URL.createObjectURL(file);
+  elements.productImageCurrentLabel.textContent = file.name;
+  elements.productImagePreviewWrap.classList.remove("d-none");
+});
 
 async function deleteProduct(product) {
   if (!window.confirm(`¿Eliminar “${product.nombreProducto}”? Esta acción no se puede deshacer.`)) return;

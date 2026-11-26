@@ -259,6 +259,20 @@ body {
   object-fit: cover;
 }
 
+.image-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.image-preview {
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  background: #edf2eb;
+  object-fit: cover;
+}
+
 .admin-product-details {
   min-width: 0;
   flex: 1;
