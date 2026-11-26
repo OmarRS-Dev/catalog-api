@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import com.moviles.catalogo.entities.Producto;
 import com.moviles.catalogo.services.ProductoService;
 
-@SuppressWarnings("null")
 @RestController
 @RequestMapping("/api/productos")
 public class ProductoController {

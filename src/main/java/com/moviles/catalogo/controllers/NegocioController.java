@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.*;
 import com.moviles.catalogo.entities.Negocio;
 import com.moviles.catalogo.services.NegocioService;
 
-@SuppressWarnings("null")
 @RestController
 @RequestMapping("/api/negocios")
 public class NegocioController {
