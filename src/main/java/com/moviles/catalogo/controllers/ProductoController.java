@@ -43,7 +43,11 @@ public class ProductoController {
         @RequestParam("image") MultipartFile image,
         Authentication authentication
     ) {
-        String secureUrl = cloudinaryImageService.upload(image);
+        NegocioPrincipal principal = (NegocioPrincipal) authentication.getPrincipal();
+        String secureUrl = cloudinaryImageService.uploadProductImage(
+            image,
+            principal.idNegocio()
+        );
         return ResponseEntity.ok(new ImageUploadResponseDTO(secureUrl));
     }
 

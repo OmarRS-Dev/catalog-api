@@ -239,6 +239,40 @@ body {
   background: var(--paper);
 }
 
+.business-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.business-logo {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 50%;
+  background: #edf2eb;
+  object-fit: cover;
+}
+
+.business-profile-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+@media (max-width: 575.98px) {
+  .business-profile {
+    flex-wrap: wrap;
+  }
+
+  .business-profile-copy {
+    flex-basis: calc(100% - 76px);
+  }
+}
+
 .admin-product {
   display: flex;
   height: 100%;

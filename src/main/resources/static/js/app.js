@@ -30,7 +30,11 @@ const elements = {
   productImagePreview: document.querySelector("#product-image-preview"),
   productImageCurrentLabel: document.querySelector("#product-image-current-label"),
   productCategory: document.querySelector("#product-category"),
-  categoryProductHelp: document.querySelector("#no-categories-help")
+  categoryProductHelp: document.querySelector("#no-categories-help"),
+  businessLogo: document.querySelector("#business-logo"),
+  businessProfileName: document.querySelector("#business-profile-name"),
+  businessLogoFile: document.querySelector("#business-logo-file"),
+  registerLogo: document.querySelector("#register-logo")
 };
 
 function showMessage(element, message, type = "info") {
@@ -77,10 +81,43 @@ function safeImageUrl(value) {
   }
 }
 
+function optimizedImageUrl(value, kind = "product") {
+  const safeUrl = safeImageUrl(value);
+  if (!safeUrl) return null;
+
+  const url = new URL(safeUrl);
+  if (url.hostname !== "res.cloudinary.com") return safeUrl;
+
+  const marker = "/image/upload/";
+  const index = url.pathname.indexOf(marker);
+  if (index < 0) return safeUrl;
+
+  const insertionIndex = index + marker.length;
+  const tail = url.pathname.slice(insertionIndex);
+  if (tail.startsWith("f_auto,q_auto:good,")) return safeUrl;
+
+  const transformation = kind === "logo"
+    ? "f_auto,q_auto:good,w_512,h_512,c_fill,g_auto"
+    : "f_auto,q_auto:good,w_1200,h_1200,c_limit";
+  url.pathname = `${url.pathname.slice(0, insertionIndex)}${transformation}/${tail}`;
+  return url.href;
+}
+
+function validateImageFile(file) {
+  if (!file) return "Selecciona una imagen.";
+  if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+    return "Formato no admitido. Usa JPG, PNG, WEBP o GIF.";
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return "La imagen debe pesar 5 MB o menos.";
+  }
+  return null;
+}
+
 function makeProductImage(product, className) {
   const wrapper = document.createElement("div");
   wrapper.className = className;
-  const url = safeImageUrl(product.portadaProducto);
+  const url = optimizedImageUrl(product.portadaProducto);
   if (!url) {
     const placeholder = document.createElement("div");
     placeholder.className = "product-placeholder";
@@ -94,6 +131,7 @@ function makeProductImage(product, className) {
   image.src = url;
   image.alt = product.nombreProducto || "Producto";
   image.loading = "lazy";
+  image.decoding = "async";
   image.addEventListener("error", () => {
     const placeholder = document.createElement("div");
     placeholder.className = "product-placeholder";
@@ -200,10 +238,31 @@ function updateAuthControls() {
   elements.adminOpen.classList.toggle("d-none", !loggedIn);
   elements.logout.classList.toggle("d-none", !loggedIn);
   elements.businessName.textContent = loggedIn ? state.business.nombreNegocio : "";
+  if (loggedIn) {
+    elements.businessProfileName.textContent = state.business.nombreNegocio;
+    const logoUrl = optimizedImageUrl(state.business.fotoNegocio, "logo");
+    if (logoUrl) {
+      elements.businessLogo.src = logoUrl;
+    } else {
+      elements.businessLogo.removeAttribute("src");
+    }
+  }
   if (!loggedIn) {
     elements.adminOpen.classList.add("d-none");
     elements.businessName.textContent = "";
   }
+}
+
+async function uploadBusinessLogo(file) {
+  const formData = new FormData();
+  formData.append("image", file);
+  const result = await api("/api/negocios/logo", {
+    method: "POST",
+    body: formData
+  });
+  state.business = { ...state.business, fotoNegocio: result.secureUrl };
+  sessionStorage.setItem("market-business", JSON.stringify(state.business));
+  updateAuthControls();
 }
 
 async function login(nombreNegocio, passwordNegocio) {
@@ -308,7 +367,7 @@ function openProductForm(product = null) {
   document.querySelector("#product-category").value = product?.categoria?.idCategoria || "";
   document.querySelector("#product-price").value = product?.precioProducto ?? "";
   elements.productImageFile.value = "";
-  elements.productImagePreview.src = safeImageUrl(product?.portadaProducto) || "";
+  elements.productImagePreview.src = optimizedImageUrl(product?.portadaProducto) || "";
   elements.productImageCurrentLabel.textContent = product?.portadaProducto
     ? "Foto actual. Elige otra para reemplazarla."
     : "";
@@ -361,14 +420,10 @@ elements.productImageFile.addEventListener("change", () => {
   const [file] = elements.productImageFile.files;
   if (!file) return;
 
-  if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+  const validationError = validateImageFile(file);
+  if (validationError) {
     elements.productImageFile.value = "";
-    showMessage(elements.productFormMessage, "Formato no admitido. Usa JPG, PNG, WEBP o GIF.", "danger");
-    return;
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    elements.productImageFile.value = "";
-    showMessage(elements.productFormMessage, "La imagen debe pesar 5 MB o menos.", "danger");
+    showMessage(elements.productFormMessage, validationError, "danger");
     return;
   }
 
@@ -376,6 +431,26 @@ elements.productImageFile.addEventListener("change", () => {
   elements.productImagePreview.src = URL.createObjectURL(file);
   elements.productImageCurrentLabel.textContent = file.name;
   elements.productImagePreviewWrap.classList.remove("d-none");
+});
+
+elements.businessLogoFile.addEventListener("change", async () => {
+  const [file] = elements.businessLogoFile.files;
+  if (!file) return;
+  const validationError = validateImageFile(file);
+  if (validationError) {
+    elements.businessLogoFile.value = "";
+    showMessage(elements.adminMessage, validationError, "danger");
+    return;
+  }
+
+  hideMessage(elements.adminMessage);
+  try {
+    await uploadBusinessLogo(file);
+    elements.businessLogoFile.value = "";
+    showMessage(elements.adminMessage, "Logo actualizado.", "success");
+  } catch (error) {
+    showMessage(elements.adminMessage, error.message, "danger");
+  }
 });
 
 async function deleteProduct(product) {
@@ -436,6 +511,13 @@ elements.loginForm.addEventListener("submit", async (event) => {
 elements.registerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   hideMessage(elements.authMessage);
+  const logoFile = elements.registerLogo.files[0];
+  const imageError = validateImageFile(logoFile);
+  if (imageError) {
+    showMessage(elements.authMessage, imageError, "danger");
+    return;
+  }
+
   const business = {
     nombreNegocio: document.querySelector("#register-name").value.trim(),
     direccionNegocio: document.querySelector("#register-address").value.trim(),
@@ -443,11 +525,28 @@ elements.registerForm.addEventListener("submit", async (event) => {
     fotoNegocio: null,
     passwordNegocio: document.querySelector("#register-password").value
   };
+  let accountCreated = false;
   try {
     await api("/api/negocios/guardar", { method: "POST", body: JSON.stringify(business) });
+    accountCreated = true;
     await login(business.nombreNegocio, business.passwordNegocio);
+    try {
+      await uploadBusinessLogo(logoFile);
+      showMessage(elements.adminMessage, "Cuenta creada y logo subido correctamente.", "success");
+    } catch (error) {
+      showMessage(
+        elements.adminMessage,
+        `La cuenta se creó, pero no se pudo subir el logo: ${error.message} Puedes intentarlo desde “Subir o cambiar logo”.`,
+        "warning"
+      );
+    }
     elements.registerForm.reset();
   } catch (error) {
+    if (accountCreated && !state.business) {
+      bootstrap.Modal.getOrCreateInstance(document.querySelector("#login-modal")).show();
+      showMessage(elements.authMessage, "La cuenta se creó, pero no se pudo iniciar sesión. Intenta iniciar sesión con tus datos.", "warning");
+      return;
+    }
     showMessage(elements.authMessage, error.message, "danger");
   }
 });

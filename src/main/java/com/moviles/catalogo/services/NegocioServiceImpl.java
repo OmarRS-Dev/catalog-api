@@ -76,6 +76,14 @@ public class NegocioServiceImpl implements NegocioService{
     }
 
     @Override
+    public Negocio actualizarLogo(@NonNull Long id, @NonNull String fotoNegocio) {
+        Negocio negocio = negocioRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Negocio no encontrado"));
+        negocio.setFotoNegocio(fotoNegocio);
+        return negocioRepository.save(negocio);
+    }
+
+    @Override
     public void eliminarNegocio(@NonNull Long id) {
         negocioRepository.deleteById(id);
     }

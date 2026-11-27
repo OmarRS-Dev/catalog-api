@@ -12,6 +12,29 @@ import com.moviles.catalogo.exceptions.BusinessException;
 class CloudinaryImageServiceTest {
 
     @Test
+    void storesImagesInTheBusinessSpecificFolders() {
+        assertEquals(
+            "EvorEZ/Negocios/42/logo",
+            CloudinaryImageService.businessLogoFolder(42)
+        );
+        assertEquals(
+            "EvorEZ/Negocios/42/productos",
+            CloudinaryImageService.productFolder(42)
+        );
+    }
+
+    @Test
+    void addsAutomaticFormatQualityAndResponsiveSizeToDeliveryUrl() {
+        assertEquals(
+            "https://res.cloudinary.com/demo/image/upload/f_auto,q_auto:good,w_1200,h_1200,c_limit/v123/EvorEZ/Negocios/42/productos/item.jpg",
+            CloudinaryImageService.optimizedDeliveryUrl(
+                "https://res.cloudinary.com/demo/image/upload/v123/EvorEZ/Negocios/42/productos/item.jpg",
+                "f_auto,q_auto:good,w_1200,h_1200,c_limit"
+            )
+        );
+    }
+
+    @Test
     void reportsMissingCloudinaryConfiguration() {
         CloudinaryImageService service = new CloudinaryImageService("", "", "");
         MockMultipartFile image = new MockMultipartFile(
@@ -23,7 +46,7 @@ class CloudinaryImageServiceTest {
 
         BusinessException exception = assertThrows(
             BusinessException.class,
-            () -> service.upload(image)
+            () -> service.uploadBusinessLogo(image, 42)
         );
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatus());
@@ -41,7 +64,7 @@ class CloudinaryImageServiceTest {
 
         BusinessException exception = assertThrows(
             BusinessException.class,
-            () -> service.upload(image)
+            () -> service.uploadBusinessLogo(image, 42)
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());

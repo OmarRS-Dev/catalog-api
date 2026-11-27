@@ -12,7 +12,7 @@ CLOUDINARY_API_KEY=tu_api_key
 CLOUDINARY_API_SECRET=tu_api_secret
 ```
 
-La aplicación nunca envía las credenciales de Cloudinary al navegador. Las imágenes se suben desde el backend a la carpeta `EvorEZ`. Se aceptan JPG, PNG, WEBP y GIF, con un tamaño máximo configurable mediante `IMAGE_MAX_FILE_SIZE` (5 MB por defecto).
+La aplicación nunca envía las credenciales de Cloudinary al navegador. Cada negocio sube sus imágenes dentro de `EvorEZ/Negocios/{id}/logo` y `EvorEZ/Negocios/{id}/productos`. Las URLs de entrega usan `f_auto` y `q_auto:good`: Cloudinary sirve el formato moderno apropiado al navegador y ajusta la compresión automáticamente. Las fotos de producto se limitan a 1200 × 1200 px y los logos a 512 × 512 px. Las imágenes ya existentes de Cloudinary también reciben estas transformaciones al mostrarse en la web. El registro solicita el logo; si la subida falla, se puede reintentar desde el panel del negocio. Se aceptan JPG, PNG, WEBP y GIF, con un tamaño máximo configurable mediante `IMAGE_MAX_FILE_SIZE` (5 MB por defecto).
 
 `.env` está excluido de Git; no compartas ni subas ese archivo.
 

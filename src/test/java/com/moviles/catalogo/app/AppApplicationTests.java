@@ -55,4 +55,11 @@ class AppApplicationTests {
 				.file("image", new byte[] {1, 2, 3}))
 			.andExpect(status().isUnauthorized());
 	}
+
+	@Test
+	void protectsBusinessLogoUploads() throws Exception {
+		mockMvc.perform(multipart("/api/negocios/logo")
+				.file("image", new byte[] {1, 2, 3}))
+			.andExpect(status().isUnauthorized());
+	}
 }

@@ -5,8 +5,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 
+import com.moviles.catalogo.dtos.ImageUploadResponseDTO;
 import com.moviles.catalogo.dtos.LoginResponseDTO;
 import com.moviles.catalogo.dtos.NegocioLoginDTO;
 import com.moviles.catalogo.dtos.NegocioRequestDTO;
@@ -14,6 +16,7 @@ import com.moviles.catalogo.dtos.NegocioResponseDTO;
 import com.moviles.catalogo.dtos.NegocioUpdateDTO;
 import com.moviles.catalogo.entities.Negocio;
 import com.moviles.catalogo.services.NegocioService;
+import com.moviles.catalogo.services.CloudinaryImageService;
 import com.moviles.catalogo.security.JwtService;
 import com.moviles.catalogo.security.NegocioPrincipal;
 import com.moviles.catalogo.exceptions.ForbiddenException;
@@ -25,10 +28,16 @@ public class NegocioController {
 
     private final NegocioService negocioService;
     private final JwtService jwtService;
+    private final CloudinaryImageService cloudinaryImageService;
 
-    public NegocioController(NegocioService negocioService, JwtService jwtService){
+    public NegocioController(
+        NegocioService negocioService,
+        JwtService jwtService,
+        CloudinaryImageService cloudinaryImageService
+    ){
         this.negocioService = negocioService;
         this.jwtService = jwtService;
+        this.cloudinaryImageService = cloudinaryImageService;
     }
 
     // -------------------------------
@@ -62,6 +71,20 @@ public class NegocioController {
         verificarPropietario(id, authentication);
         Negocio actualizado = negocioService.actualizarNegocio(id, negocio);
         return ResponseEntity.ok(aNegocioResponse(actualizado));
+    }
+
+    @PostMapping("/logo")
+    public ResponseEntity<ImageUploadResponseDTO> subirLogo(
+        @RequestParam("image") MultipartFile image,
+        Authentication authentication
+    ) {
+        NegocioPrincipal principal = (NegocioPrincipal) authentication.getPrincipal();
+        String secureUrl = cloudinaryImageService.uploadBusinessLogo(
+            image,
+            principal.idNegocio()
+        );
+        negocioService.actualizarLogo(principal.idNegocio(), secureUrl);
+        return ResponseEntity.ok(new ImageUploadResponseDTO(secureUrl));
     }
 
     // -------------------------------
